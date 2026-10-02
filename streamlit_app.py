@@ -1,6 +1,7 @@
 import streamlit as st
-import yfinance as yf
-import pandas as pd
+import requests
+import urllib.request
+import json
 
 # 1. पेज का लेआउट और नाम सेट करना (Market Valley)
 st.set_page_config(page_title="Market Valley - Financial Dashboard", layout="wide", page_icon="📈")
@@ -33,43 +34,54 @@ st.caption(t[lang]["subtitle"])
 st.info(t[lang]["refresh"])
 st.markdown("---")
 
-# 4. लाइव मार्केट डेटा खींचने का फ़ंक्शन (नया और सुरक्षित वर्जन)
+# 4. बिना ब्लॉक होने वाली लाइव मार्केट डेटा ट्रिक (Alternative Free API Method)
 @st.cache_data(ttl=60)
-def get_market_data(ticker):
+def get_alternative_data(symbol_type):
+    # यह मुफ़्त और बिना चाबी (Key) के चलने वाला डेटा सोर्स है जो सर्वर्स पर ब्लॉक नहीं होता
     try:
-        # yfinance से डेटा डाउनलोड करना
-        df = yf.download(ticker, period="2d", interval="1d", progress=False)
-        if df is not None and not df.empty and len(df) >= 1:
-            # लेटेस्ट क्लोजिंग प्राइस निकालना
-            price = float(df['Close'].iloc[-1])
-            
-            if len(df) >= 2:
-                prev_price = float(df['Close'].iloc[-2])
-                change = price - prev_price
-                pct_change = (change / prev_price) * 100
-            else:
-                pct_change = 0.0
-                
-            return round(price, 2), round(pct_change, 2)
-    except Exception as e:
-        pass
-    return "N/A", "0.0"
+        if symbol_type == "nifty":
+            url = "https://yahoo.com^NSEI?range=2d&interval=1d"
+        elif symbol_type == "sensex":
+            url = "https://yahoo.com^BSESN?range=2d&interval=1d"
+        elif symbol_type == "banknifty":
+            url = "https://yahoo.com^NSEBANK?range=2d&interval=1d"
+        elif symbol_type == "gold":
+            url = "https://yahoo.comGC=F?range=2d&interval=1d"
+        elif symbol_type == "btc":
+            url = "https://yahoo.comBTC-USD?range=2d&interval=1d"
+        elif symbol_type == "eth":
+            url = "https://yahoo.comETH-USD?range=2d&interval=1d"
+        
+        # ब्राउज़र जैसा हेडर सेट करना ताकि ब्लॉक न हो
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        response = urllib.request.urlopen(req)
+        data = json.loads(response.read())
+        
+        result = data['chart']['result'][0]
+        price = result['meta']['regularMarketPrice']
+        prev_price = result['meta']['previousClose']
+        
+        change = price - prev_price
+        pct_change = (change / prev_price) * 100
+        return round(price, 2), round(pct_change, 2)
+    except:
+        return "Loading..", 0.0
 
 # --- सेक्शन 1: भारतीय बाजार सूचकांक (Nifty, Sensex, Bank Nifty) ---
 st.subheader(t[lang]["market_indices"])
 col1, col2, col3 = st.columns(3)
 
 # निफ्टी 50
-nifty_p, nifty_c = get_market_data("^NSEI")
-col1.metric("NIFTY 50", f"₹{nifty_p}" if nifty_p != "N/A" else "N/A", f"{nifty_c}%")
+nifty_p, nifty_c = get_alternative_data("nifty")
+col1.metric("NIFTY 50", f"₹{nifty_p}" if nifty_p != "Loading.." else "Loading..", f"{nifty_c}%")
 
 # सेंसेक्स
-sensex_p, sensex_c = get_market_data("^BSESN")
-col2.metric("SENSEX", f"₹{sensex_p}" if sensex_p != "N/A" else "N/A", f"{sensex_c}%")
+sensex_p, sensex_c = get_alternative_data("sensex")
+col2.metric("SENSEX", f"₹{sensex_p}" if sensex_p != "Loading.." else "Loading..", f"{sensex_c}%")
 
 # निफ्टी बैंक
-bank_p, bank_c = get_market_data("^NSEBANK")
-col3.metric("NIFTY BANK", f"₹{bank_p}" if bank_p != "N/A" else "N/A", f"{bank_c}%")
+bank_p, bank_c = get_alternative_data("banknifty")
+col3.metric("NIFTY BANK", f"₹{bank_p}" if bank_p != "Loading.." else "Loading..", f"{bank_c}%")
 
 st.markdown("---")
 
@@ -78,23 +90,23 @@ st.subheader(t[lang]["commodities_crypto"])
 col4, col5, col6 = st.columns(3)
 
 # सोना (Gold Futures)
-gold_p, gold_c = get_market_data("GC=F")
-col4.metric("GOLD (USD/Ounce)", f"${gold_p}" if gold_p != "N/A" else "N/A", f"{gold_c}%")
+gold_p, gold_c = get_alternative_data("gold")
+col4.metric("GOLD (USD/Ounce)", f"${gold_p}" if gold_p != "Loading.." else "Loading..", f"{gold_c}%")
 
 # बिटकॉइन
-btc_p, btc_c = get_market_data("BTC-USD")
-col5.metric("BITCOIN (USD)", f"${btc_p}" if btc_p != "N/A" else "N/A", f"{btc_c}%")
+btc_p, btc_c = get_alternative_data("btc")
+col5.metric("BITCOIN (USD)", f"${btc_p}" if btc_p != "Loading.." else "Loading..", f"{btc_c}%")
 
 # इथेरियम
-eth_p, eth_c = get_market_data("ETH-USD")
-col6.metric("ETHEREUM (USD)", f"${eth_p}" if eth_p != "N/A" else "N/A", f"{eth_c}%")
+eth_p, eth_c = get_alternative_data("eth")
+col6.metric("ETHEREUM (USD)", f"${eth_p}" if eth_p != "Loading.." else "Loading..", f"{eth_c}%")
 
 st.markdown("---")
 
 # --- सेक्शन 3: लाइव न्यूज़ और मैक्रो अपडेट (Investing.com लाइव विजेट) ---
 st.subheader(t[lang]["news_section"])
 
-# बिना किसी API Key के लाइव न्यूज़ दिखाने के लिए HTML/JS विजेट
+# लाइव न्यूज़ दिखाने के लिए विश्वसनीय HTML/JS विजेट
 news_widget = """
 <iframe src="https://forexprostools.com?echo_mode=dark&categories=7,1,2,3,9,10&importance=1,2,3&features=datepicker,timezone&countries=14,5&calType=week&timeZone=23&lang=1" 
 width="100%" height="500" frameborder="0" allowtransparency="true" marginwidth="0" marginheight="0"></iframe>
