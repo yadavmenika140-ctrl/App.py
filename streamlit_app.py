@@ -16,8 +16,6 @@ t = {
         "market_indices": "Indian Market Indices",
         "commodities_crypto": "Gold & Crypto Market",
         "news_section": "📰 Market-Moving News & Global Macro Updates",
-        "price": "Price",
-        "change": "Change",
         "refresh": "Data auto-refreshes every 60 seconds."
     },
     "हिंदी": {
@@ -26,8 +24,6 @@ t = {
         "market_indices": "भारतीय बाजार सूचकांक (Indices)",
         "commodities_crypto": "सोना और क्रिप्टो बाजार",
         "news_section": "📰 बाजार को प्रभावित करने वाली खबरें और ग्लोबल मैक्रो अपडेट",
-        "price": "कीमत",
-        "change": "बदलाव",
         "refresh": "डेटा हर 60 सेकंड में स्वचालित रूप से अपडेट होता है।"
     }
 }
@@ -37,20 +33,27 @@ st.caption(t[lang]["subtitle"])
 st.info(t[lang]["refresh"])
 st.markdown("---")
 
-# 4. लाइव मार्केट डेटा खींचने का फ़ंक्शन (Yahoo Finance)
+# 4. लाइव मार्केट डेटा खींचने का फ़ंक्शन (नया और सुरक्षित वर्जन)
 @st.cache_data(ttl=60)
 def get_market_data(ticker):
     try:
-        data = yf.Ticker(ticker)
-        hist = data.history(period="2d")
-        if len(hist) >= 2:
-            price = hist['Close'].iloc[-1]
-            prev_price = hist['Close'].iloc[-2]
-            change = price - prev_price
-            pct_change = (change / prev_price) * 100
+        # yfinance से डेटा डाउनलोड करना
+        df = yf.download(ticker, period="2d", interval="1d", progress=False)
+        if df is not None and not df.empty and len(df) >= 1:
+            # लेटेस्ट क्लोजिंग प्राइस निकालना
+            price = float(df['Close'].iloc[-1])
+            
+            if len(df) >= 2:
+                prev_price = float(df['Close'].iloc[-2])
+                change = price - prev_price
+                pct_change = (change / prev_price) * 100
+            else:
+                pct_change = 0.0
+                
             return round(price, 2), round(pct_change, 2)
-    except Exception:
-        return "N/A", "N/A"
+    except Exception as e:
+        pass
+    return "N/A", "0.0"
 
 # --- सेक्शन 1: भारतीय बाजार सूचकांक (Nifty, Sensex, Bank Nifty) ---
 st.subheader(t[lang]["market_indices"])
@@ -58,15 +61,15 @@ col1, col2, col3 = st.columns(3)
 
 # निफ्टी 50
 nifty_p, nifty_c = get_market_data("^NSEI")
-col1.metric("NIFTY 50", f"₹{nifty_p:,}" if isinstance(nifty_p, (int, float)) else "N/A", f"{nifty_c}%" if isinstance(nifty_c, (int, float)) else "N/A")
+col1.metric("NIFTY 50", f"₹{nifty_p}" if nifty_p != "N/A" else "N/A", f"{nifty_c}%")
 
 # सेंसेक्स
 sensex_p, sensex_c = get_market_data("^BSESN")
-col2.metric("SENSEX", f"₹{sensex_p:,}" if isinstance(sensex_p, (int, float)) else "N/A", f"{sensex_c}%" if isinstance(sensex_c, (int, float)) else "N/A")
+col2.metric("SENSEX", f"₹{sensex_p}" if sensex_p != "N/A" else "N/A", f"{sensex_c}%")
 
 # निफ्टी बैंक
 bank_p, bank_c = get_market_data("^NSEBANK")
-col3.metric("NIFTY BANK", f"₹{bank_p:,}" if isinstance(bank_p, (int, float)) else "N/A", f"{bank_c}%" if isinstance(bank_c, (int, float)) else "N/A")
+col3.metric("NIFTY BANK", f"₹{bank_p}" if bank_p != "N/A" else "N/A", f"{bank_c}%")
 
 st.markdown("---")
 
@@ -76,15 +79,15 @@ col4, col5, col6 = st.columns(3)
 
 # सोना (Gold Futures)
 gold_p, gold_c = get_market_data("GC=F")
-col4.metric("GOLD (USD/Ounce)", f"${gold_p:,}" if isinstance(gold_p, (int, float)) else "N/A", f"{gold_c}%" if isinstance(gold_c, (int, float)) else "N/A")
+col4.metric("GOLD (USD/Ounce)", f"${gold_p}" if gold_p != "N/A" else "N/A", f"{gold_c}%")
 
 # बिटकॉइन
 btc_p, btc_c = get_market_data("BTC-USD")
-col5.metric("BITCOIN (USD)", f"${btc_p:,}" if isinstance(btc_p, (int, float)) else "N/A", f"{btc_c}%" if isinstance(btc_c, (int, float)) else "N/A")
+col5.metric("BITCOIN (USD)", f"${btc_p}" if btc_p != "N/A" else "N/A", f"{btc_c}%")
 
 # इथेरियम
 eth_p, eth_c = get_market_data("ETH-USD")
-col6.metric("ETHEREUM (USD)", f"${eth_p:,}" if isinstance(eth_p, (int, float)) else "N/A", f"{eth_c}%" if isinstance(eth_c, (int, float)) else "N/A")
+col6.metric("ETHEREUM (USD)", f"${eth_p}" if eth_p != "N/A" else "N/A", f"{eth_c}%")
 
 st.markdown("---")
 
