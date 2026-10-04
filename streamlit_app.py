@@ -46,7 +46,7 @@ st.markdown("---")
 @st.cache_data(ttl=60)
 def fetch_real_price(ticker):
     # !!! ध्यान दें: यहाँ नीचे 'YOUR_RAPIDAPI_KEY' हटाकर अपनी असली RapidAPI वाली की (Key) पेस्ट करें !!!
-    api_key = 36950aeffdmsh366c53535cf748dp10075djsn4fb48103e527"
+    api_key ="36950aeffdmsh366c53535cf748dp10075djsn4fb48103e527"
     
     url = f"https://yfapi.net{ticker}"
     headers = {
